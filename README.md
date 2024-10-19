@@ -1,8 +1,7 @@
 
 Paramax
 ============
-
-Documentation available [here](https://danielward27.github.io/paramax/index.html)
+Work in progress. Documentation available [here](https://danielward27.github.io/paramax/index.html).
 
 Parameterizations and constraints for JAX PyTrees
 -----------------------------------------------------------------------
