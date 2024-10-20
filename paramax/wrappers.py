@@ -68,10 +68,7 @@ def unwrap(tree: PyTree):
 class AbstractUnwrappable(eqx.Module, Generic[T]):
     """An abstract class representing an unwrappable object.
 
-    Unwrappables generally replace nodes in a pytree, in order to specify some custom
-    behaviour to apply upon unwrapping before use. This can be used e.g. to apply
-    parameter constraints, such as making scale parameters postive, or applying
-    stop_gradient before accessing the parameters.
+    Unwrappables replace PyTree nodes, applying custom behavior upon unwrapping.
     """
 
     @abstractmethod

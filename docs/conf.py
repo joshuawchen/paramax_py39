@@ -11,7 +11,7 @@ if "doctest" not in sys.argv:  # Avoid type checking/isinstance failures.
 
 sys.path.insert(0, Path("..").resolve())
 
-project = "FlowJax"
+project = "Paramax"
 copyright = "2022, Daniel Ward"
 author = "Daniel Ward"
 
