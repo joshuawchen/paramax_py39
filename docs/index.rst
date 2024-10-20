@@ -41,7 +41,7 @@ during optimization) as follows
 
    >>> import paramax
    >>> import jax.numpy as jnp
-   >>> tril = jnp.tril(jnp.ones(3,3))
+   >>> tril = jnp.tril(jnp.ones((3,3)))
    >>> tril = paramax.Parameterize(jnp.tril, tril)
 
 
