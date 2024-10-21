@@ -1,22 +1,11 @@
 """:class:`AbstractUnwrappable` objects and utilities.
 
-These are "placeholder" values for specifying custom behaviour for nodes in a pytree.
-Many of these facilitate similar functions to pytorch parameterizations. We use this
-for example to apply parameter constraints, masking of parameters etc. To apply the
-behaviour, we use :func:`unwrap`, which will replace any :class:`AbstractUnwrappable`
-nodes in a pytree with the unwrapped versions.
-
-.. note::
-    
-    If creating a custom unwrappable, remember that unwrapping will generally occur
-    after initialization of the model. Because of this, we recommend ensuring that
-    the ``unwrap`` method supports unwrapping if the model is constructed in a
-    vectorized context, such as ``eqx.filter_vmap``, e.g. through broadcasting or
-    vectorization.
+These are placeholder values for specifying custom behaviour for nodes in a pytree,
+applied using :func:`unwrap`.
 """
 
 from abc import abstractmethod
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from typing import Any, Generic, TypeVar
 
 import equinox as eqx
@@ -25,44 +14,11 @@ import jax.numpy as jnp
 from jax import lax
 from jax.nn import softplus
 from jax.tree_util import tree_leaves
-from jaxtyping import Array, Int, PyTree, Scalar
+from jaxtyping import Array, PyTree
 
 from paramax.utils import inv_softplus
 
 T = TypeVar("T")
-
-
-def unwrap(tree: PyTree):
-    """Recursively unwraps all :class:`AbstractUnwrappable` nodes within a pytree.
-
-    This leaves all other nodes unchanged. If nested, the innermost
-    ``AbstractUnwrappable`` nodes are unwrapped first.
-
-    Example:
-        Enforcing positivity.
-
-        .. doctest::
-
-            >>> from paramax.wrappers import Parameterize, unwrap
-            >>> import jax.numpy as jnp
-            >>> params = Parameterize(jnp.exp, jnp.zeros(3))
-            >>> unwrap(("abc", 1, params))
-            ('abc', 1, Array([1., 1., 1.], dtype=float32))
-    """
-
-    def _map_fn(leaf):
-        if isinstance(leaf, AbstractUnwrappable):
-            # Flatten to ignore until all contained AbstractUnwrappables are unwrapped
-            flat, tree_def = eqx.tree_flatten_one_level(leaf)
-            tree = jax.tree_util.tree_unflatten(tree_def, unwrap(flat))
-            return tree.unwrap()
-        return leaf
-
-    return jax.tree_util.tree_map(
-        f=_map_fn,
-        tree=tree,
-        is_leaf=lambda x: isinstance(x, AbstractUnwrappable),
-    )
 
 
 class AbstractUnwrappable(eqx.Module, Generic[T]):
@@ -77,13 +33,51 @@ class AbstractUnwrappable(eqx.Module, Generic[T]):
         pass
 
 
+def unwrap(tree: PyTree):
+    """Map across a PyTree and unwrap all :class:`AbstractUnwrappable` nodes.
+
+    This leaves all other nodes unchanged. If nested, the innermost
+    ``AbstractUnwrappable`` nodes are unwrapped first.
+
+    Example:
+        Enforcing positivity.
+
+        .. doctest::
+
+            >>> import paramax
+            >>> import jax.numpy as jnp
+            >>> params = paramax.Parameterize(jnp.exp, jnp.zeros(3))
+            >>> paramax.unwrap(("abc", 1, params))
+            ('abc', 1, Array([1., 1., 1.], dtype=float32))
+    """
+
+    def _unwrap(tree, *, include_self: bool):
+        def _map_fn(leaf):
+            if isinstance(leaf, AbstractUnwrappable):
+                # Unwrap subnodes, then itself
+                return _unwrap(leaf, include_self=False).unwrap()
+            return leaf
+
+        def is_leaf(x):
+            is_unwrappable = isinstance(x, AbstractUnwrappable)
+            included = include_self or x is not tree
+            return is_unwrappable and included
+
+        return jax.tree_util.tree_map(f=_map_fn, tree=tree, is_leaf=is_leaf)
+
+    return _unwrap(tree, include_self=True)
+
+
 class Parameterize(AbstractUnwrappable[T]):
     """Unwrap an object by calling fn with args and kwargs.
 
-    All of fn, args and kwargs may contain trainable parameters. If the Parameterize is
-    created within ``eqx.filter_vmap``, unwrapping is automatically vectorized
-    correctly, as long as the vmapped constructor adds leading batch
-    dimensions to all arrays (the default for ``eqx.filter_vmap``).
+    All of fn, args and kwargs may contain trainable parameters.
+
+    .. note::
+
+        Unwrapping typically occurs after model initialization. Therefore, if the
+        ``Parameterize`` object may be created in a vectorized context, we recommend
+        ensuring that ``fn`` still unwraps correctly, e.g. by supporting broadcasting.
 
     Example:
         .. doctest::
@@ -101,42 +95,16 @@ class Parameterize(AbstractUnwrappable[T]):
     """
 
     fn: Callable[..., T]
-    args: Iterable
+    args: tuple[Any, ...]
     kwargs: dict[str, Any]
-    _dummy: Int[Scalar, ""]  # Used to track vectorized construction.
 
     def __init__(self, fn: Callable, *args, **kwargs):
         self.fn = fn
-        self.args = args
+        self.args = tuple(args)
         self.kwargs = kwargs
-        self._dummy = jnp.empty((), int)
 
     def unwrap(self) -> T:
-
-        def _unwrap_fn(self):
-            return self.fn(*self.args, **self.kwargs)
-
-        for dim in reversed(self._dummy.shape):  # vectorize if constructed under vmap
-            _unwrap_fn = eqx.filter_vmap(_unwrap_fn, axis_size=dim)
-        return _unwrap_fn(self)
-
-
-class NonTrainable(AbstractUnwrappable[T]):
-    """Applies stop gradient to all arraylike leaves before unwrapping.
-
-    See also :func:`non_trainable`, which is probably a generally prefereable way to
-    achieve similar behaviour, which wraps the arraylike leaves directly, rather than
-    the tree. Useful to mark pytrees (arrays, submodules, etc) as frozen/non-trainable.
-    We also filter out NonTrainable nodes when partitioning parameters for training,
-    or when parameterizing bijections in coupling/masked autoregressive flows
-    (transformers).
-    """
-
-    tree: T
-
-    def unwrap(self) -> T:
-        differentiable, static = eqx.partition(self.tree, eqx.is_array_like)
-        return eqx.combine(lax.stop_gradient(differentiable), static)
+        return self.fn(*self.args, **self.kwargs)
 
 
 def non_trainable(tree: PyTree):
@@ -156,11 +124,8 @@ def non_trainable(tree: PyTree):
             ... )
 
 
-        This is done in both :func:`~paramax.train.fit_to_data` and
-        :func:`~paramax.train.fit_to_key_based_loss`.
-
-    Wrapping the arrays rather than the entire tree is often preferable, allowing easier
-    access to attributes compared to wrapping the entire tree.
+    Wrapping the arrays in a model rather than the entire tree is often preferable,
+    allowing easier access to attributes compared to wrapping the entire tree.
 
     Args:
         tree: The pytree.
@@ -176,6 +141,24 @@ def non_trainable(tree: PyTree):
     )
 
 
+class NonTrainable(AbstractUnwrappable[T]):
+    """Applies stop gradient to all arraylike leaves before unwrapping.
+
+    See also :func:`non_trainable`, which is probably a generally prefereable way to
+    achieve similar behaviour, which wraps the arraylike leaves directly, rather than
+    the tree. Useful to mark pytrees (arrays, submodules, etc) as frozen/non-trainable.
+    Note that the underlying parameters may still be impacted by regularization,
+    so it is generally advised to use this as a suggestively named class
+    for filtering parameters.
+    """
+
+    tree: T
+
+    def unwrap(self) -> T:
+        differentiable, static = eqx.partition(self.tree, eqx.is_array_like)
+        return eqx.combine(lax.stop_gradient(differentiable), static)
+
+
 class WeightNormalization(AbstractUnwrappable[Array]):
     """Applies weight normalization (https://arxiv.org/abs/1602.07868).
 
@@ -184,7 +167,7 @@ class WeightNormalization(AbstractUnwrappable[Array]):
     """
 
     weight: Array | AbstractUnwrappable[Array]
-    scale: Array | AbstractUnwrappable[Array] = eqx.field(init=False)
+    scale: Array | AbstractUnwrappable[Array]
 
     def __init__(self, weight: Array | AbstractUnwrappable[Array]):
         self.weight = weight

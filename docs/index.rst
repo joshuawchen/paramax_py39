@@ -1,7 +1,8 @@
 Paramax
 ===========
 
-Paramax: a small package for applying parameterizations, constraints to JAX PyTrees.
+A small package for applying parameterizations and constraints to nodes in JAX
+PyTrees.
 
 
 Installation
@@ -11,16 +12,18 @@ Installation
     pip install paramax
 
 
-Simple example
+How it works
 ------------------
-The most common way to apply parameterizations is via
-:py:class:`~paramax.wrappers.Parameterize`. This class takes a callable and any
+- :py:class:`~paramax.wrappers.AbstractUnwrappable` objects act as placeholders in the
+  PyTree, defining the parameterizations.
+- :py:func:`~paramax.wrappers.unwrap` applies the parameterizations, replacing the
+  :py:class:`~paramax.wrappers.AbstractUnwrappable` objects.
+
+A simple example of an :py:class:`~paramax.wrappers.AbstractUnwrappable`
+is :py:class:`~paramax.wrappers.Parameterize`. This class takes a callable and any
 positional or keyword arguments, which are stored and passed to the function when
 unwrapping.
 
-When :py:func:`~paramax.wrappers.unwrap` is called on a PyTree containing a
-:py:class:`~paramax.wrappers.Parameterize` object, the stored function is applied
-using the stored arguments.
 
 .. doctest::
 
@@ -33,9 +36,8 @@ using the stored arguments.
    ('abc', 1, Array([1., 1., 1.], dtype=float32))
 
 
-Many simple parameterizations can be handled with this class. As another example,
-we can parameterize a lower triangular matrix (such that it remains lower triangular
-during optimization) as follows
+Many simple parameterizations can be handled with this class, for example,
+we can parameterize a lower triangular matrix using
 
 .. doctest::
 
@@ -45,13 +47,15 @@ during optimization) as follows
    >>> tril = paramax.Parameterize(jnp.tril, tril)
 
 
-See :doc:`/api/wrappers` for more possibilities.
+See :doc:`/api/wrappers` for more :py:class:`~paramax.wrappers.AbstractUnwrappable`
+objects.
 
 When to unwrap
 -------------------
 - Unwrap whenever necessary, typically at the top of loss functions, functions or 
   methods requiring the parameterizations to have been applied.
 - Unwrapping prior to a gradient computation used for optimization is usually a mistake!
+
 
 .. toctree::
    :caption: API

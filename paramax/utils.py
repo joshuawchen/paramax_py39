@@ -11,7 +11,7 @@ def inv_softplus(x: ArrayLike) -> Array:
         x,
         x < 0,
         "Expected positive inputs to inv_softplus. If you are trying to use a negative "
-        "scale parameter, consider constructing with positive scales and modifying the "
-        "scale attribute post-construction, e.g., using eqx.tree_at.",
+        "scale parameter, you may be able to construct with positive scales, and "
+        "modify the scale attribute post-construction, e.g., using eqx.tree_at.",
     )
     return jnp.log(-jnp.expm1(-x)) + x
