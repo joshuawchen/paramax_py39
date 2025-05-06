@@ -8,6 +8,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Information Analysis",
   "Topic :: Scientific/Engineering :: Mathematics",
+  "Typing :: Typed",
 ]
 dependencies = ["jax", "equinox", "jaxtyping"]
 description = "Parameterizations and parameter constraints for JAX PyTrees."
