@@ -1,5 +1,5 @@
 
-Paramax
+Paramax for Python 3.9 (a fork)
 ============
 Parameterizations and constraints for JAX PyTrees
 -----------------------------------------------------------------------
@@ -24,11 +24,11 @@ be much appreciated!
 
 ## Documentation
 
-Documentation available [here](https://danielward27.github.io/paramax/).
+Original documentation available [here](https://danielward27.github.io/paramax/).
 
-## Installation
+## Installation (Requires python>=3.9)
 ```bash
-pip install paramax
+pip install paramax 
 ```
 
 ## Example
