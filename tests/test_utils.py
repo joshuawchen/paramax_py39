@@ -2,7 +2,7 @@ import jax.numpy as jnp
 import pytest
 from jax.nn import softplus
 
-from paramax.utils import inv_softplus
+from paramax_py39.utils import inv_softplus
 
 
 def test_inv_softplus():

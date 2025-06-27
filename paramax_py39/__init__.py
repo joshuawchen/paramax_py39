@@ -12,7 +12,7 @@ from .wrappers import (
     unwrap,
 )
 
-__version__ = version("paramax")
+__version__ = version("paramax_py39")
 
 __all__ = [
     "AbstractUnwrappable",

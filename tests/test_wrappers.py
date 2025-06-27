@@ -6,7 +6,7 @@ import jax.random as jr
 import pytest
 from jax.tree_util import tree_map
 
-from paramax.wrappers import (
+from paramax_py39.wrappers import (
     NonTrainable,
     Parameterize,
     WeightNormalization,
@@ -54,8 +54,8 @@ def test_WeightNormalization():
 
 
 test_cases = {
-    "NonTrainable": lambda key: NonTrainable(jr.normal(key, 10)),
-    "Parameterize-exp": lambda key: Parameterize(jnp.exp, jr.normal(key, 10)),
+    "NonTrainable": lambda key: NonTrainable(jr.normal(key, (10,))),
+    "Parameterize-exp": lambda key: Parameterize(jnp.exp, jr.normal(key, (10,))),
     "WeightNormalization": lambda key: WeightNormalization(jr.normal(key, (10, 2))),
 }
 
@@ -75,8 +75,6 @@ def test_vectorization_invariance(wrapper_fn, shape):
 
     unwrapped = unwrap(wrapper)
     unwrapped_vmap = unwrap(vmap_wrapper)
-    unwrapped_vmap_zero = tree_map(
-        lambda leaf: leaf[*([0] * len(shape)), ...],
-        unwrapped_vmap,
-    )
+    idx = (0,) * len(shape) + (Ellipsis,)
+    unwrapped_vmap_zero = tree_map(lambda leaf: leaf[idx], unwrapped_vmap)
     assert eqx.tree_equal(unwrapped, unwrapped_vmap_zero, atol=1e-7)

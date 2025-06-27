@@ -1,5 +1,5 @@
 [project]
-authors = [{ name = "Daniel Ward", email = "danielward27@outlook.com" }]
+authors = [{ name = "Joshua Chen", email = "joshuawchen@icloud.com" }]
 classifiers = [
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
@@ -11,17 +11,16 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = ["jax", "equinox", "jaxtyping"]
-description = "Parameterizations and parameter constraints for JAX PyTrees."
+description = "Parameterizations and parameter constraints for JAX PyTrees, forked for Python 3.9 compatability."
 keywords = ["jax", "neural-networks", "equinox"]
 license = { file = "LICENSE" }
-name = "paramax"
+name = "paramax_py39"
 readme = "README.md"
-requires-python = ">=3.10"
-version = "0.0.3"
+requires-python = ">=3.9"
+version = "0.0.3.1"
 
 [project.urls]
-repository = "https://github.com/danielward27/paramax"
-documentation = "https://danielward27.github.io/paramax/index.html"
+repository = "https://github.com/joshuawchen/paramax_py39"
 
 [project.optional-dependencies]
 dev = [
